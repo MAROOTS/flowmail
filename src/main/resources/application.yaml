@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: flowmailbackend
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/flowmail}
+    username: ${DB_USER:flowmail_app}
+    password: ${DB_PASSWORD:flowmail_app}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    url: ${FLYWAY_URL:jdbc:postgresql://localhost:5433/flowmail}
+    user: ${FLYWAY_USER:flowmail}
+    password: ${FLYWAY_PASSWORD:flowmail}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+flowmail:
+  jwt:
+    secret: ${JWT_SECRET:dev-only-secret-change-me-at-least-32-bytes-long}
+    issuer: flowmail
+    ttl-minutes: 30
