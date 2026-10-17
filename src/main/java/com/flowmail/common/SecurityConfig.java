@@ -21,10 +21,13 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login").permitAll()
                         .requestMatchers("/unsubscribe/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/contacts/**", "/api/suppressions/**")
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/contacts/**", "/api/suppressions/**",
+                                "/api/templates/**", "/api/campaigns/**")
                         .hasAnyRole("OWNER", "MANAGER", "VIEWER")
                         .requestMatchers(HttpMethod.DELETE, "/api/suppressions/**").hasRole("OWNER")
-                        .requestMatchers("/api/contacts/**", "/api/suppressions/**")
+                        .requestMatchers("/api/contacts/**", "/api/suppressions/**",
+                                "/api/templates/**", "/api/campaigns/**")
                         .hasAnyRole("OWNER", "MANAGER")
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth -> oauth

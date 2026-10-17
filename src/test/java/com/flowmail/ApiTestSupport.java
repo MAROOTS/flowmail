@@ -9,6 +9,7 @@ import java.net.http.HttpResponse;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -93,7 +94,53 @@ public abstract class ApiTestSupport extends PostgresIntegrationTest {
         assertThat(response.statusCode()).isEqualTo(201);
         return extract(response.body(), "id");
     }
+    protected static final String GOOD_HTML =
+            "<p>Hi {{firstName}}</p><a href='{{unsubscribeUrl}}'>Unsubscribe</a>";
 
+    protected String templateJson(String name, String subject, String html) {
+        return "{\"name\":\"" + name + "\",\"subject\":\"" + subject + "\",\"htmlBody\":\"" + html + "\"}";
+    }
+
+    protected String campaignJson(String templateId) {
+        return "{\"name\":\"Send " + UUID.randomUUID() + "\",\"templateId\":\"" + templateId
+                + "\",\"fromName\":\"Acme\",\"fromEmail\":\"news@acme.example\"}";
+    }
+
+    protected String createTemplate(Account account, String name, String html) throws Exception {
+        HttpResponse<String> response = send("POST", "/api/templates", account.token(),
+                templateJson(name, "Hello {{firstName}}", html));
+        assertThat(response.statusCode()).isEqualTo(201);
+        return extract(response.body(), "id");
+    }
+
+    protected String createCampaign(Account account, String templateId) throws Exception {
+        HttpResponse<String> response = send("POST", "/api/campaigns", account.token(), campaignJson(templateId));
+        assertThat(response.statusCode()).isEqualTo(201);
+        return extract(response.body(), "id");
+    }
+
+    protected void setMonthlyLimit(Account account, int limit) throws Exception {
+        try (Connection c = DriverManager.getConnection(
+                POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword());
+             PreparedStatement ps = c.prepareStatement(
+                     "update tenants set monthly_email_limit = ? where id = ?::uuid")) {
+            ps.setInt(1, limit);
+            ps.setString(2, account.tenantId());
+            ps.executeUpdate();
+        }
+    }
+
+    protected long ownerCount(String sql, String param) throws Exception {
+        try (Connection c = DriverManager.getConnection(
+                POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword());
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, param);
+            try (ResultSet rs = ps.executeQuery()) {
+                rs.next();
+                return rs.getLong(1);
+            }
+        }
+    }
     protected String extract(String json, String field) {
         Matcher m = Pattern.compile("\"" + field + "\":\"([^\"]+)\"").matcher(json);
         assertThat(m.find()).as("field " + field + " in " + json).isTrue();
