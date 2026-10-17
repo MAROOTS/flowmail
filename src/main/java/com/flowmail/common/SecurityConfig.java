@@ -20,8 +20,12 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/contacts/**").hasAnyRole("OWNER", "MANAGER", "VIEWER")
-                        .requestMatchers("/api/contacts/**").hasAnyRole("OWNER", "MANAGER")
+                        .requestMatchers("/unsubscribe/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/contacts/**", "/api/suppressions/**")
+                        .hasAnyRole("OWNER", "MANAGER", "VIEWER")
+                        .requestMatchers(HttpMethod.DELETE, "/api/suppressions/**").hasRole("OWNER")
+                        .requestMatchers("/api/contacts/**", "/api/suppressions/**")
+                        .hasAnyRole("OWNER", "MANAGER")
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth -> oauth
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtConverter)))
