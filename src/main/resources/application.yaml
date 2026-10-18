@@ -18,17 +18,39 @@ spring:
     multipart:
       max-file-size: 2MB
       max-request-size: 2MB
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
 
 management:
   endpoints:
     web:
       exposure:
         include: health,info
+  health:
+    mail:
+      enabled: false
 
 flowmail:
+  public-base-url: ${PUBLIC_BASE_URL:http://localhost:8080}
   jwt:
     secret: ${JWT_SECRET:dev-only-secret-change-me-at-least-32-bytes-long}
     issuer: flowmail
     ttl-minutes: 30
   unsubscribe:
     secret: ${UNSUBSCRIBE_SECRET:dev-only-unsubscribe-secret-at-least-32-bytes}
+  mail:
+    provider: ${MAIL_PROVIDER:smtp}
+  worker:
+    enabled: ${WORKER_ENABLED:false}
+    polling: ${WORKER_POLLING:true}
+    batch-size: 20
+    lease-seconds: 300
+    max-attempts: 5
+    base-backoff-seconds: 30
+    max-backoff-seconds: 900
+    poll-interval-ms: 1000
+    db:
+      url: ${WORKER_DB_URL:jdbc:postgresql://localhost:5433/flowmail}
+      user: ${WORKER_DB_USER:flowmail_worker}
+      password: ${WORKER_DB_PASSWORD:flowmail_worker}

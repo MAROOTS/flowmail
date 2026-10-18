@@ -59,4 +59,9 @@ public class CampaignController {
                                    @RequestParam(defaultValue = "0") int offset) {
         return campaignService.messages(principal.tenantId(), id, limit, offset);
     }
+
+    @PostMapping("/{id}/cancel")
+    CampaignResponse cancel(@AuthenticationPrincipal TenantPrincipal principal, @PathVariable UUID id) {
+        return campaignService.cancel(principal.tenantId(), id);
+    }
 }

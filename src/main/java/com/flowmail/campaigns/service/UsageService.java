@@ -4,6 +4,7 @@ import com.flowmail.campaigns.UsageResponse;
 import com.flowmail.common.ApiException;
 import com.flowmail.tenancy.TenantTx;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.UUID;
@@ -79,5 +80,19 @@ public class UsageService {
                     .orElse(0);
             return new UsageResponse(period, used, limit);
         });
+    }
+
+    /** Gives back quota that was reserved at launch for messages that will never be sent. */
+    public void release(UUID tenantId, OffsetDateTime launchedAt, int count) {
+        LocalDate period = launchedAt.withOffsetSameInstant(ZoneOffset.UTC).toLocalDate().withDayOfMonth(1);
+        jdbc.sql("""
+                update usage_counters
+                set used = greatest(used - :count, 0)
+                where tenant_id = :tenant and period = :period
+                """)
+                .param("tenant", tenantId)
+                .param("period", period)
+                .param("count", count)
+                .update();
     }
 }

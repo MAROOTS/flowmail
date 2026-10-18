@@ -20,5 +20,14 @@ public abstract class PostgresIntegrationTest {
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
         registry.add("spring.datasource.username", () -> "flowmail_app");
         registry.add("spring.datasource.password", () -> "flowmail_app");
+
+        registry.add("flowmail.worker.enabled", () -> "true");
+        registry.add("flowmail.worker.polling", () -> "false");
+        registry.add("flowmail.worker.db.url", POSTGRES::getJdbcUrl);
+        registry.add("flowmail.worker.db.user", () -> "flowmail_worker");
+        registry.add("flowmail.worker.db.password", () -> "flowmail_worker");
+        registry.add("flowmail.worker.base-backoff-seconds", () -> "0");
+        registry.add("flowmail.worker.max-backoff-seconds", () -> "0");
+        registry.add("flowmail.mail.provider", () -> "mock");
     }
 }

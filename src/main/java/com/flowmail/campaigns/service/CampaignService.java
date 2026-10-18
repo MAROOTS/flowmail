@@ -44,6 +44,8 @@ public class CampaignService {
 
     private record TemplateRow(String subject, String htmlBody, String textBody) {
     }
+    private record CancelRow(String status, OffsetDateTime launchedAt) {
+    }
 
     private final JdbcClient jdbc;
     private final TenantTx tenantTx;
@@ -209,6 +211,58 @@ public class CampaignService {
                     .param("html", template.htmlBody())
                     .param("text", template.textBody())
                     .update();
+
+            return withCounts(tenantId, load(tenantId, campaignId));
+        });
+    }
+    /**
+     * Cancels messages that no worker has claimed yet and gives their quota back. Messages already
+     * claimed are in flight and finish normally. The campaign row lock serializes this against the
+     * worker's status updates.
+     */
+    public CampaignResponse cancel(UUID tenantId, UUID campaignId) {
+        return tenantTx.call(tenantId, () -> {
+            CancelRow campaign = jdbc.sql("""
+                    select status, launched_at
+                    from campaigns
+                    where tenant_id = :tenant and id = :id
+                    for update
+                    """)
+                    .param("tenant", tenantId)
+                    .param("id", campaignId)
+                    .query((rs, i) -> new CancelRow(
+                            rs.getString("status"),
+                            rs.getObject("launched_at", OffsetDateTime.class)))
+                    .optional()
+                    .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,
+                            "campaign_not_found", "Campaign not found"));
+
+            if (!List.of("queued", "sending", "paused").contains(campaign.status())) {
+                throw new ApiException(HttpStatus.CONFLICT, "campaign_not_cancelable",
+                        "Only queued or sending campaigns can be canceled");
+            }
+
+            int canceled = jdbc.sql("""
+                    update email_messages
+                    set status = 'canceled', last_error = 'Campaign canceled', updated_at = now()
+                    where tenant_id = :tenant and campaign_id = :id and status = 'queued'
+                    """)
+                    .param("tenant", tenantId)
+                    .param("id", campaignId)
+                    .update();
+
+            jdbc.sql("""
+                    update campaigns
+                    set status = 'canceled', updated_at = now()
+                    where tenant_id = :tenant and id = :id
+                    """)
+                    .param("tenant", tenantId)
+                    .param("id", campaignId)
+                    .update();
+
+            if (canceled > 0) {
+                usageService.release(tenantId, campaign.launchedAt(), canceled);
+            }
 
             return withCounts(tenantId, load(tenantId, campaignId));
         });
